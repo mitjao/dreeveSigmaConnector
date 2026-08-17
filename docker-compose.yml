@@ -1,0 +1,15 @@
+services:
+  # Pulls activities out of SIGMA Cloud, converts them to TCX and drops them
+  # into Dreeve's watch folder — where Dreeve's daemon imports them.
+  sigma-connector:
+    build: .
+    image: dreeve-sigma-connector:local
+    container_name: dreeve-sigma-connector
+    restart: unless-stopped
+    env_file: ./.env
+    volumes:
+      # The SAME ./watch folder your Dreeve `app`/`daemon` services mount.
+      - ./watch:/watch
+      - ./sigma/state:/state
+      - ./sigma/tokens:/tokens
+    command: ["run"]
