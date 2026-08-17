@@ -2,8 +2,10 @@ services:
   # Pulls activities out of SIGMA Cloud, converts them to TCX and drops them
   # into Dreeve's watch folder — where Dreeve's daemon imports them.
   sigma-connector:
-    build: .
-    image: dreeve-sigma-connector:local
+    image: ghcr.io/mitjao/dreevesigmaconnector:latest
+    # For local development against this checkout, comment the image line above
+    # and uncomment the next line to build from source instead:
+    # build: .
     container_name: dreeve-sigma-connector
     restart: unless-stopped
     env_file: ./.env

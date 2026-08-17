@@ -11,23 +11,59 @@ SIGMA Cloud → connector → ./watch/ → Dreeve imports it
 
 Stdlib-only Python (no pip dependencies). Runs as a Docker container or directly.
 
-## Quick start (Docker)
+A prebuilt multi-arch image (amd64 + arm64) is published to the GitHub Container
+Registry on every push to `main`:
 
-1. Copy `.env.example` to `.env` and fill in `SIGMA_EMAIL` / `SIGMA_PASSWORD`.
-2. Point the `./watch` volume in `docker-compose.yml` at the same folder your
-   Dreeve `app`/`daemon` mount.
-3. Log in once and start it:
-
-```bash
-docker compose run --rm sigma-connector login   # stores an access token
-docker compose up -d                             # syncs now, then every hour
-docker compose logs -f sigma-connector
+```
+ghcr.io/mitjao/dreevesigmaconnector:latest
 ```
 
-Check what it's doing:
+## Add it to your Dreeve `docker-compose.yml`
+
+Drop this service next to your Dreeve `app` / `daemon`, mounting the **same**
+`./watch` folder they use — no local build needed:
+
+```yaml
+  sigma-connector:
+    image: ghcr.io/mitjao/dreevesigmaconnector:latest
+    container_name: dreeve-sigma-connector
+    restart: unless-stopped
+    environment:
+      SIGMA_EMAIL: you@example.com
+      SIGMA_PASSWORD: your-sigma-cloud-password
+      MAX_DOWNLOADS_PER_CYCLE: "50"   # gentle first backfill; 0 = all at once
+      POLL_INTERVAL: "3600"
+    volumes:
+      - ./watch:/watch                # the SAME folder Dreeve imports from
+      - ./sigma/state:/state
+      - ./sigma/tokens:/tokens
+    command: ["run"]
+```
+
+Then:
 
 ```bash
+docker compose pull sigma-connector
+docker compose run --rm sigma-connector login   # one-time: stores an access token
+docker compose up -d sigma-connector            # syncs now, then every POLL_INTERVAL
+docker compose logs -f sigma-connector
 docker compose exec sigma-connector python -m dreeve_sigma_connector status
+```
+
+> The GHCR package inherits the repo's visibility. While the repo is **private**,
+> the host pulling the image must be logged in to ghcr
+> (`echo $TOKEN | docker login ghcr.io -u mitjao --password-stdin`, token with
+> `read:packages`). To skip that, make the package public once under the repo's
+> **Packages → package settings → Change visibility**.
+
+## Quick start (this checkout)
+
+Using the bundled `docker-compose.yml` (copy `.env.example` to `.env` first):
+
+```bash
+docker compose run --rm sigma-connector login
+docker compose up -d
+docker compose logs -f sigma-connector
 ```
 
 ## Quick start (no Docker)
