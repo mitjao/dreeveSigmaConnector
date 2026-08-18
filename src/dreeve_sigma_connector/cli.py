@@ -4,7 +4,7 @@ Command-line interface for the SIGMA -> Dreeve connector.
   login       run the OAuth flow once and store the access token
   sync-once   one cycle: list -> download -> convert -> write to watch/
   sync-once --dry-run   show what would be delivered, download nothing
-  run         loop sync-once every POLL_INTERVAL seconds
+  run         loop sync-once every SIGMA_CONNECTOR_POLL_INTERVAL seconds
   status      print the last cycle's status
 """
 
@@ -55,8 +55,8 @@ def _ensure_token(cfg: Config) -> SigmaCloudClient:
         tok = auth.login(cfg.email, cfg.password, cfg.client_id, cfg.client_secret)
         auth.save_token(cfg.token_dir, tok)
         return SigmaCloudClient(tok["access_token"])
-    print("No stored token and no SIGMA_EMAIL/SIGMA_PASSWORD to log in with.",
-          file=sys.stderr)
+    print("No stored token and no SIGMA_CONNECTOR_EMAIL/SIGMA_CONNECTOR_PASSWORD "
+          "to log in with.", file=sys.stderr)
     sys.exit(2)
 
 
@@ -108,7 +108,7 @@ def main(argv=None) -> int:
     p_once = sub.add_parser("sync-once", help="run a single sync cycle")
     p_once.add_argument("--dry-run", action="store_true",
                         help="list what would be delivered without downloading")
-    p_run = sub.add_parser("run", help="loop sync-once every POLL_INTERVAL seconds")
+    p_run = sub.add_parser("run", help="loop sync-once every SIGMA_CONNECTOR_POLL_INTERVAL seconds")
     p_run.add_argument("--dry-run", action="store_true")
     sub.add_parser("status", help="print the last cycle status")
 

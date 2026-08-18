@@ -4,9 +4,9 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PYTHONPATH=/app/src \
-    WATCH_DIR=/watch \
-    STATE_DIR=/state \
-    TOKEN_DIR=/tokens
+    SIGMA_CONNECTOR_WATCH_DIR=/watch \
+    SIGMA_CONNECTOR_STATE_DIR=/state \
+    SIGMA_CONNECTOR_TOKEN_DIR=/tokens
 
 WORKDIR /app
 COPY src/ /app/src/

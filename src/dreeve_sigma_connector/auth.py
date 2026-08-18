@@ -61,7 +61,15 @@ def _req(op, method, url, data=None, headers=None):
 def login(email: str, password: str, client_id: str, client_secret: str) -> dict:
     """Run the full authorization-code flow and return the token JSON dict."""
     if not email or not password:
-        raise AuthError("SIGMA_EMAIL and SIGMA_PASSWORD are required to log in.")
+        raise AuthError(
+            "SIGMA_CONNECTOR_EMAIL and SIGMA_CONNECTOR_PASSWORD are required to log in."
+        )
+    if not client_id or not client_secret:
+        raise AuthError(
+            "SIGMA_CONNECTOR_CLIENT_ID and SIGMA_CONNECTOR_CLIENT_SECRET are required. "
+            "Extract them from your own SIGMA DATA CENTER install — see the README "
+            "section 'Getting the client credentials' (tools/extract_client_creds.py)."
+        )
     op = _opener()
     authorize = f"{BASE_URL}/oauth/authorize?" + urllib.parse.urlencode(
         {"response_type": "code", "client_id": client_id, "redirect_uri": REDIRECT_URI}
@@ -75,7 +83,7 @@ def login(email: str, password: str, client_id: str, client_secret: str) -> dict
     )
     loc = headers.get("Location", "")
     if "error" in loc.lower():
-        raise AuthError("Login rejected — check SIGMA_EMAIL / SIGMA_PASSWORD.")
+        raise AuthError("Login rejected — check SIGMA_CONNECTOR_EMAIL / SIGMA_CONNECTOR_PASSWORD.")
 
     code = _walk_for_code(op, loc or authorize, authorize)
 

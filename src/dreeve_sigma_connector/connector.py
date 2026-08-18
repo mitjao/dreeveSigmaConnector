@@ -29,7 +29,7 @@ class CycleResult:
     delivered: int = 0
     skipped: int = 0        # already current in the ledger
     failed: int = 0
-    too_old: int = 0        # older than SINCE_DAYS
+    too_old: int = 0        # older than SIGMA_CONNECTOR_SINCE_DAYS
     without_file: int = 0   # server has no downloadable file (e.g. manual entries)
     backlog: int = 0        # still owed a download after this cycle's cap
     errors: list[str] = field(default_factory=list)

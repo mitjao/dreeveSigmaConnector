@@ -15,9 +15,9 @@ Auth flow (reverse-engineered from CloudWorker.swf):
 
 Stdlib only. Nothing is uploaded; responses are written next to this script.
 
-Env vars (or interactive prompts):
-  SIGMA_CLIENT_ID, SIGMA_CLIENT_SECRET   # from tools/extract_client_creds.py (MAC pair)
-  SIGMA_USER, SIGMA_PASS                 # your SIGMA Cloud email + password
+Env vars (or interactive prompts) — same names the connector uses:
+  SIGMA_CONNECTOR_CLIENT_ID, SIGMA_CONNECTOR_CLIENT_SECRET  # from tools/extract_client_creds.py (MAC pair)
+  SIGMA_CONNECTOR_EMAIL, SIGMA_CONNECTOR_PASSWORD           # your SIGMA Cloud email + password
 """
 
 import base64
@@ -83,8 +83,8 @@ def prompt(name, env, secret=False):
     v = os.environ.get(env)
     if v:
         return v
-    # Allow reading the value from a file (e.g. SIGMA_PASS_FILE), so it never
-    # touches the command line or shell history, and works with no TTY.
+    # Allow reading the value from a file (e.g. SIGMA_CONNECTOR_PASSWORD_FILE), so
+    # it never touches the command line or shell history, and works with no TTY.
     fpath = os.environ.get(env + "_FILE")
     if not fpath and secret:
         default_file = os.path.join(OUT_DIR, ".sigma_pass")
@@ -147,8 +147,8 @@ def get_code(opener, client_id):
     do(opener, "GET", authorize)
 
     # 2. form login
-    user = prompt("SIGMA_USER (email)", "SIGMA_USER")
-    password = prompt("SIGMA_PASS", "SIGMA_PASS", secret=True)
+    user = prompt("SIGMA_CONNECTOR_EMAIL", "SIGMA_CONNECTOR_EMAIL")
+    password = prompt("SIGMA_CONNECTOR_PASSWORD", "SIGMA_CONNECTOR_PASSWORD", secret=True)
     status, headers, _ = do(
         opener, "POST", f"{BASE}/login.do",
         data={"j_username": user, "j_password": password, "remember-me": "on"},
@@ -201,8 +201,8 @@ def get_code(opener, client_id):
 
 
 def main():
-    client_id = prompt("SIGMA_CLIENT_ID", "SIGMA_CLIENT_ID")
-    client_secret = prompt("SIGMA_CLIENT_SECRET", "SIGMA_CLIENT_SECRET", secret=True)
+    client_id = prompt("SIGMA_CONNECTOR_CLIENT_ID", "SIGMA_CONNECTOR_CLIENT_ID")
+    client_secret = prompt("SIGMA_CONNECTOR_CLIENT_SECRET", "SIGMA_CONNECTOR_CLIENT_SECRET", secret=True)
     stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     opener, _jar = build_opener()

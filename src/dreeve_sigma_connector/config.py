@@ -8,12 +8,6 @@ from dataclasses import dataclass
 BASE_URL = "https://www.sigma-data-cloud.com"
 REDIRECT_URI = "https://www.sigma-dc-control.com"  # registered redirect_uri of the DATA CENTER client
 
-# OAuth client credentials embedded in the official SIGMA apps. Defaults are the
-# macOS DATA CENTER client (extracted from CloudWorker.swf). Override via env if
-# SIGMA ever rotates them; see tools/extract_client_creds.py.
-DEFAULT_CLIENT_ID = "de3d306c44114f565065687d534d6efa"
-DEFAULT_CLIENT_SECRET = "d145ca897ed15ade3feffad9d545e4ef"
-
 
 def _read(name: str, default: str = "") -> str:
     """Env var, or its *_FILE indirection (for Docker secrets)."""
@@ -47,18 +41,22 @@ class Config:
     @classmethod
     def from_env(cls) -> "Config":
         return cls(
-            email=_read("SIGMA_EMAIL"),
-            password=_read("SIGMA_PASSWORD"),
-            client_id=_read("SIGMA_CLIENT_ID", DEFAULT_CLIENT_ID),
-            client_secret=_read("SIGMA_CLIENT_SECRET", DEFAULT_CLIENT_SECRET),
-            watch_dir=_read("WATCH_DIR", "/watch"),
-            state_dir=_read("STATE_DIR", "/state"),
-            token_dir=_read("TOKEN_DIR", "/tokens"),
-            since_days=int(_read("SINCE_DAYS", "0") or "0"),
-            poll_interval=int(_read("POLL_INTERVAL", "3600") or "3600"),
-            max_per_cycle=int(_read("MAX_DOWNLOADS_PER_CYCLE", "0") or "0"),
-            download_delay=float(_read("DOWNLOAD_DELAY_SECONDS", "0.5") or "0.5"),
-            on_conflict=_read("ON_CONFLICT", "skip"),
-            output_format=_read("OUTPUT_FORMAT", "tcx"),
-            log_level=_read("LOG_LEVEL", "info"),
+            email=_read("SIGMA_CONNECTOR_EMAIL"),
+            password=_read("SIGMA_CONNECTOR_PASSWORD"),
+            # The OAuth client_id/secret of an official SIGMA app. Not shipped
+            # with the connector — extract them from your own SIGMA DATA CENTER
+            # install once (see README → "Getting the client credentials" and
+            # tools/extract_client_creds.py).
+            client_id=_read("SIGMA_CONNECTOR_CLIENT_ID"),
+            client_secret=_read("SIGMA_CONNECTOR_CLIENT_SECRET"),
+            watch_dir=_read("SIGMA_CONNECTOR_WATCH_DIR", "/watch"),
+            state_dir=_read("SIGMA_CONNECTOR_STATE_DIR", "/state"),
+            token_dir=_read("SIGMA_CONNECTOR_TOKEN_DIR", "/tokens"),
+            since_days=int(_read("SIGMA_CONNECTOR_SINCE_DAYS", "0") or "0"),
+            poll_interval=int(_read("SIGMA_CONNECTOR_POLL_INTERVAL", "3600") or "3600"),
+            max_per_cycle=int(_read("SIGMA_CONNECTOR_MAX_DOWNLOADS_PER_CYCLE", "0") or "0"),
+            download_delay=float(_read("SIGMA_CONNECTOR_DOWNLOAD_DELAY_SECONDS", "0.5") or "0.5"),
+            on_conflict=_read("SIGMA_CONNECTOR_ON_CONFLICT", "skip"),
+            output_format=_read("SIGMA_CONNECTOR_OUTPUT_FORMAT", "tcx"),
+            log_level=_read("SIGMA_CONNECTOR_LOG_LEVEL", "info"),
         )
