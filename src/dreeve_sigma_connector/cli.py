@@ -4,7 +4,8 @@ Command-line interface for the SIGMA -> Dreeve connector.
   login       run the OAuth flow once and store the access token
   sync-once   one cycle: list -> download -> convert -> write to watch/
   sync-once --dry-run   show what would be delivered, download nothing
-  run         loop sync-once every SIGMA_CONNECTOR_POLL_INTERVAL seconds
+  run         sync-once now (unless SIGMA_CONNECTOR_SYNC_ON_STARTUP=false), then
+              on the SIGMA_CONNECTOR_SCHEDULE cron schedule
   status      print the last cycle's status
 """
 
@@ -16,11 +17,13 @@ import logging
 import os
 import sys
 import time
+from datetime import datetime
 
 from . import auth
 from .client import InvalidTokenError, SigmaCloudClient
 from .config import Config
 from .connector import Connector
+from .cron import CronSchedule
 
 
 def _setup_logging(level: str) -> None:
@@ -82,13 +85,20 @@ def cmd_sync_once(cfg: Config, args) -> int:
 
 def cmd_run(cfg: Config, args) -> int:
     log = logging.getLogger("sigma.cli")
+    schedule = CronSchedule(cfg.schedule)  # fail fast on a bad expression
+    first = True
     while True:
-        try:
-            cmd_sync_once(cfg, args)
-        except Exception as e:  # keep the loop alive across transient errors
-            log.error("cycle error: %s", e)
-        log.info("sleeping %ds until next cycle", cfg.poll_interval)
-        time.sleep(cfg.poll_interval)
+        if cfg.sync_on_startup or not first:
+            try:
+                cmd_sync_once(cfg, args)
+            except Exception as e:  # keep the loop alive across transient errors
+                log.error("cycle error: %s", e)
+        first = False
+        nxt = schedule.next_after(datetime.now())
+        log.info("next cycle at %s (schedule %r)", nxt.isoformat(sep=" "), cfg.schedule)
+        # sleep in chunks so wall-clock jumps (suspend, NTP, DST) don't skew the wake-up
+        while (remaining := nxt.timestamp() - time.time()) > 0:
+            time.sleep(min(remaining, 300))
 
 
 def cmd_status(cfg: Config, args) -> int:
@@ -108,7 +118,7 @@ def main(argv=None) -> int:
     p_once = sub.add_parser("sync-once", help="run a single sync cycle")
     p_once.add_argument("--dry-run", action="store_true",
                         help="list what would be delivered without downloading")
-    p_run = sub.add_parser("run", help="loop sync-once every SIGMA_CONNECTOR_POLL_INTERVAL seconds")
+    p_run = sub.add_parser("run", help="sync now, then on the SIGMA_CONNECTOR_SCHEDULE cron schedule")
     p_run.add_argument("--dry-run", action="store_true")
     sub.add_parser("status", help="print the last cycle status")
 

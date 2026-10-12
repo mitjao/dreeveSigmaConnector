@@ -31,7 +31,8 @@ class Config:
     state_dir: str
     token_dir: str
     since_days: int          # only deliver activities newer than N days on first run (0 = all)
-    poll_interval: int       # seconds between cycles in `run`
+    schedule: str            # cron expression for cycles in `run` (local time, see TZ)
+    sync_on_startup: bool    # `run` syncs once immediately before following the schedule
     max_per_cycle: int       # cap downloads per cycle (0 = no cap)
     download_delay: float    # pause between downloads (seconds)
     on_conflict: str         # skip | overwrite when the .tcx already exists in watch/
@@ -53,7 +54,9 @@ class Config:
             state_dir=_read("SIGMA_CONNECTOR_STATE_DIR", "/state"),
             token_dir=_read("SIGMA_CONNECTOR_TOKEN_DIR", "/tokens"),
             since_days=int(_read("SIGMA_CONNECTOR_SINCE_DAYS", "0") or "0"),
-            poll_interval=int(_read("SIGMA_CONNECTOR_POLL_INTERVAL", "3600") or "3600"),
+            schedule=_read("SIGMA_CONNECTOR_SCHEDULE", "0 10,23 * * *"),
+            sync_on_startup=_read("SIGMA_CONNECTOR_SYNC_ON_STARTUP", "true").lower()
+                not in ("0", "false", "no", "off"),
             max_per_cycle=int(_read("SIGMA_CONNECTOR_MAX_DOWNLOADS_PER_CYCLE", "0") or "0"),
             download_delay=float(_read("SIGMA_CONNECTOR_DOWNLOAD_DELAY_SECONDS", "0.5") or "0.5"),
             on_conflict=_read("SIGMA_CONNECTOR_ON_CONFLICT", "skip"),
