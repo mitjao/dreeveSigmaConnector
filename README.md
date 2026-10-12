@@ -9,7 +9,7 @@ them with no manual exporting.
 SIGMA Cloud → connector → ./watch/ → Dreeve imports it
 ```
 
-Stdlib-only Python (no pip dependencies). Runs as a Docker container or directly.
+Python with a single pure-Python dependency ([cronsim](https://github.com/cuu508/cronsim)). Runs as a Docker container or directly.
 
 A prebuilt multi-arch image (amd64 + arm64) is published to the GitHub Container
 Registry on every push to `main`:
@@ -38,7 +38,8 @@ collide with Dreeve's own variables when they share a compose/env file.
       SIGMA_CONNECTOR_CLIENT_ID: your-client-id
       SIGMA_CONNECTOR_CLIENT_SECRET: your-client-secret
       SIGMA_CONNECTOR_MAX_DOWNLOADS_PER_CYCLE: "50"   # gentle first backfill; 0 = all at once
-      SIGMA_CONNECTOR_POLL_INTERVAL: "3600"
+      SIGMA_CONNECTOR_SCHEDULE: "0 10,23 * * *"     # 10:00 and 23:00
+      TZ: Europe/Berlin
     volumes:
       - ./watch:/watch                # the SAME folder Dreeve imports from
       - ./sigma/state:/state
@@ -51,7 +52,7 @@ Then:
 ```bash
 docker compose pull sigma-connector
 docker compose run --rm sigma-connector login   # one-time: stores an access token
-docker compose up -d sigma-connector            # syncs now, then every cycle
+docker compose up -d sigma-connector            # syncs now, then on schedule
 docker compose logs -f sigma-connector
 docker compose exec sigma-connector python -m dreeve_sigma_connector status
 ```
@@ -117,6 +118,7 @@ docker compose logs -f sigma-connector
 ## Quick start (no Docker)
 
 ```bash
+pip install -r requirements.txt
 export PYTHONPATH=src
 export SIGMA_CONNECTOR_EMAIL=you@example.com SIGMA_CONNECTOR_PASSWORD='…'
 export SIGMA_CONNECTOR_CLIENT_ID='…' SIGMA_CONNECTOR_CLIENT_SECRET='…'
@@ -127,7 +129,7 @@ export SIGMA_CONNECTOR_WATCH_DIR=./watch \
 python -m dreeve_sigma_connector login
 python -m dreeve_sigma_connector sync-once --dry-run   # preview, downloads nothing
 python -m dreeve_sigma_connector sync-once             # one real cycle
-python -m dreeve_sigma_connector run                   # loop every cycle
+python -m dreeve_sigma_connector run                   # sync now, then on schedule
 python -m dreeve_sigma_connector status
 ```
 
@@ -138,7 +140,7 @@ python -m dreeve_sigma_connector status
 | `login` | Runs the OAuth flow once and stores the access token in the token dir. |
 | `sync-once` | One cycle: list activities → download new/changed → convert → write TCX. |
 | `sync-once --dry-run` | Lists what *would* be delivered; downloads nothing. |
-| `run` | Loops `sync-once` every `SIGMA_CONNECTOR_POLL_INTERVAL` seconds. Auto-relogins if the token is rejected. |
+| `run` | Runs `sync-once` at startup (unless `SIGMA_CONNECTOR_SYNC_ON_STARTUP=false`), then on the `SIGMA_CONNECTOR_SCHEDULE` cron schedule. Auto-relogins if the token is rejected. |
 | `status` | Prints the last cycle's JSON status. |
 
 ## Configuration
@@ -153,7 +155,9 @@ All variables are prefixed `SIGMA_CONNECTOR_`. Secret values also accept a
 | `SIGMA_CONNECTOR_CLIENT_ID` | — | **Required.** OAuth client id — see [Getting the client credentials](#getting-the-client-credentials). |
 | `SIGMA_CONNECTOR_CLIENT_SECRET` | — | **Required.** Matching OAuth client secret. |
 | `SIGMA_CONNECTOR_SINCE_DAYS` | `0` | On first run, only deliver activities newer than N days (`0` = all). |
-| `SIGMA_CONNECTOR_POLL_INTERVAL` | `3600` | Seconds between cycles in `run`. |
+| `SIGMA_CONNECTOR_SCHEDULE` | `0 10,23 * * *` | Cron expression (minute hour day month weekday) for cycles in `run`. Parsed by [cronsim](https://github.com/cuu508/cronsim) (supports names like `MON`, `L`, `#`, …). |
+| `SIGMA_CONNECTOR_SYNC_ON_STARTUP` | `true` | Sync once immediately when `run` starts; `false` waits for the first scheduled time. |
+| `TZ` | `UTC` | Time zone the schedule is evaluated in, e.g. `Europe/Berlin`. |
 | `SIGMA_CONNECTOR_MAX_DOWNLOADS_PER_CYCLE` | `0` (unset) / `50` (example) | Per-cycle download cap; the rest becomes `backlog` for the next cycle. |
 | `SIGMA_CONNECTOR_DOWNLOAD_DELAY_SECONDS` | `0.5` | Pause between downloads. |
 | `SIGMA_CONNECTOR_ON_CONFLICT` | `skip` | `skip` or `overwrite` when the `.tcx` already sits in `watch/`. |
