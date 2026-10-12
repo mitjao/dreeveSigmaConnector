@@ -136,7 +136,7 @@ python -m dreeve_sigma_connector status
 | Command | What it does |
 |---|---|
 | `login` | Runs the OAuth flow once and stores the access token in the token dir. |
-| `sync-once` | One cycle: list activities → download new/changed → convert → write TCX. |
+| `sync-once` | One cycle: list activities → download new/changed → convert → write TCX. Safe to run next to `run` (e.g. `docker compose exec sigma-connector python -m dreeve_sigma_connector sync-once`): cycles share a lock in the state dir, so if one is already in progress the other skips and exits with code 4. |
 | `sync-once --dry-run` | Lists what *would* be delivered; downloads nothing. |
 | `run` | Loops `sync-once` every `SIGMA_CONNECTOR_POLL_INTERVAL` seconds. Auto-relogins if the token is rejected. |
 | `status` | Prints the last cycle's JSON status. |
