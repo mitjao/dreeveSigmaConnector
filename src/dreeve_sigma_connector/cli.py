@@ -17,13 +17,15 @@ import logging
 import os
 import sys
 import time
-from datetime import datetime
+from datetime import datetime, tzinfo
+from zoneinfo import ZoneInfo, ZoneInfoNotFoundError
+
+from cronsim import CronSim, CronSimError
 
 from . import auth
 from .client import InvalidTokenError, SigmaCloudClient
 from .config import Config
 from .connector import Connector
-from .cron import CronSchedule
 
 
 def _setup_logging(level: str) -> None:
@@ -83,9 +85,22 @@ def cmd_sync_once(cfg: Config, args) -> int:
     return 0
 
 
+def _local_tz() -> tzinfo:
+    """The zone from TZ (e.g. Europe/Berlin), so the schedule follows DST."""
+    try:
+        return ZoneInfo(os.environ.get("TZ") or "UTC")
+    except (ZoneInfoNotFoundError, ValueError):
+        return datetime.now().astimezone().tzinfo  # e.g. a POSIX TZ string
+
+
 def cmd_run(cfg: Config, args) -> int:
     log = logging.getLogger("sigma.cli")
-    schedule = CronSchedule(cfg.schedule)  # fail fast on a bad expression
+    tz = _local_tz()
+    try:
+        CronSim(cfg.schedule, datetime.now(tz))  # fail fast on a bad expression
+    except CronSimError as e:
+        print(f"Invalid SIGMA_CONNECTOR_SCHEDULE {cfg.schedule!r}: {e}", file=sys.stderr)
+        return 2
     first = True
     while True:
         if cfg.sync_on_startup or not first:
@@ -94,9 +109,9 @@ def cmd_run(cfg: Config, args) -> int:
             except Exception as e:  # keep the loop alive across transient errors
                 log.error("cycle error: %s", e)
         first = False
-        nxt = schedule.next_after(datetime.now())
+        nxt = next(CronSim(cfg.schedule, datetime.now(tz)))
         log.info("next cycle at %s (schedule %r)", nxt.isoformat(sep=" "), cfg.schedule)
-        # sleep in chunks so wall-clock jumps (suspend, NTP, DST) don't skew the wake-up
+        # sleep in chunks so wall-clock jumps (suspend, NTP) don't skew the wake-up
         while (remaining := nxt.timestamp() - time.time()) > 0:
             time.sleep(min(remaining, 300))
 

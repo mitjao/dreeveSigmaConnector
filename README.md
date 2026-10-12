@@ -9,7 +9,7 @@ them with no manual exporting.
 SIGMA Cloud → connector → ./watch/ → Dreeve imports it
 ```
 
-Stdlib-only Python (no pip dependencies). Runs as a Docker container or directly.
+Python with a single pure-Python dependency ([cronsim](https://github.com/cuu508/cronsim)). Runs as a Docker container or directly.
 
 A prebuilt multi-arch image (amd64 + arm64) is published to the GitHub Container
 Registry on every push to `main`:
@@ -118,6 +118,7 @@ docker compose logs -f sigma-connector
 ## Quick start (no Docker)
 
 ```bash
+pip install -r requirements.txt
 export PYTHONPATH=src
 export SIGMA_CONNECTOR_EMAIL=you@example.com SIGMA_CONNECTOR_PASSWORD='…'
 export SIGMA_CONNECTOR_CLIENT_ID='…' SIGMA_CONNECTOR_CLIENT_SECRET='…'
@@ -154,7 +155,7 @@ All variables are prefixed `SIGMA_CONNECTOR_`. Secret values also accept a
 | `SIGMA_CONNECTOR_CLIENT_ID` | — | **Required.** OAuth client id — see [Getting the client credentials](#getting-the-client-credentials). |
 | `SIGMA_CONNECTOR_CLIENT_SECRET` | — | **Required.** Matching OAuth client secret. |
 | `SIGMA_CONNECTOR_SINCE_DAYS` | `0` | On first run, only deliver activities newer than N days (`0` = all). |
-| `SIGMA_CONNECTOR_SCHEDULE` | `0 10,23 * * *` | Cron expression (minute hour day month weekday) for cycles in `run`. Supports `*`, `a-b`, `a,b`, `*/n`. |
+| `SIGMA_CONNECTOR_SCHEDULE` | `0 10,23 * * *` | Cron expression (minute hour day month weekday) for cycles in `run`. Parsed by [cronsim](https://github.com/cuu508/cronsim) (supports names like `MON`, `L`, `#`, …). |
 | `SIGMA_CONNECTOR_SYNC_ON_STARTUP` | `true` | Sync once immediately when `run` starts; `false` waits for the first scheduled time. |
 | `TZ` | `UTC` | Time zone the schedule is evaluated in, e.g. `Europe/Berlin`. |
 | `SIGMA_CONNECTOR_MAX_DOWNLOADS_PER_CYCLE` | `0` (unset) / `50` (example) | Per-cycle download cap; the rest becomes `backlog` for the next cycle. |
