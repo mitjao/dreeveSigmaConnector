@@ -12,6 +12,8 @@ Command-line interface for the SIGMA -> Dreeve connector.
 from __future__ import annotations
 
 import argparse
+import contextlib
+import fcntl
 import json
 import logging
 import os
@@ -65,7 +67,36 @@ def _ensure_token(cfg: Config) -> SigmaCloudClient:
     sys.exit(2)
 
 
+@contextlib.contextmanager
+def _sync_lock(cfg: Config):
+    """Exclusive, non-blocking lock so two cycles never touch the ledger at once.
+
+    Yields True if acquired, False if another cycle (e.g. the `run` loop vs. a
+    manual `sync-once` via `docker compose exec`) already holds it. flock is
+    released by the kernel when the process dies, so a crash never leaves it stuck.
+    """
+    os.makedirs(cfg.state_dir, exist_ok=True)
+    with open(os.path.join(cfg.state_dir, "sync.lock"), "w") as f:
+        try:
+            fcntl.flock(f, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            yield False
+            return
+        try:
+            yield True
+        finally:
+            fcntl.flock(f, fcntl.LOCK_UN)
+
+
 def cmd_sync_once(cfg: Config, args) -> int:
+    with _sync_lock(cfg) as acquired:
+        if not acquired:
+            print("Another sync cycle is already running; skipping.", file=sys.stderr)
+            return 4
+        return _sync_once_locked(cfg, args)
+
+
+def _sync_once_locked(cfg: Config, args) -> int:
     client = _ensure_token(cfg)
     conn = Connector(cfg, client)
     try:
